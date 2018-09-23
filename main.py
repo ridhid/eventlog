@@ -24,7 +24,7 @@ request_send_result_phase: Dict[int, int] = {}
 requests_durations: List[int] = []
 
 request_connections: DefaultDict[int, Dict[int, str]] = defaultdict(dict)
-request_connections_response_status: DefaultDict[int, Dict[int, str]] = defaultdict(dict)
+request_connections_response_status: DefaultDict[int, Dict[int, bool]] = defaultdict(dict)
 
 backends_replicas: Dict[str, int] = {}
 backends_connections: DefaultDict[str, int] = defaultdict(lambda: 0)
@@ -80,6 +80,16 @@ def percentile(array, percent):
 percentil_95 = functools.partial(percentile, percent=0.95)
 
 
+def clean_resource(request_id: int):
+    del requests_start_time[request_id]
+    del backend_poll_phase_times[request_id]
+    del merge_results_phase_time[request_id]
+    del request_send_result_phase[request_id]
+
+    del request_connections[request_id]
+    del request_connections_response_status[request_id]
+
+
 def parse_request_record(request_id: int, request_type: str, timestamp: int):
     if request_type == REQUEST_TYPE_START:
         requests_start_time[request_id] = timestamp
@@ -111,14 +121,7 @@ def parse_request_record(request_id: int, request_type: str, timestamp: int):
         if not all(request_connections_response_status[request_id].values()):
             requests_not_completed.increase()
 
-        # clean already handled results (memory optimization)
-        del requests_start_time[request_id]
-        del backend_poll_phase_times[request_id]
-        del merge_results_phase_time[request_id]
-        del request_send_result_phase[request_id]
-
-        del request_connections[request_id]
-        del request_connections_response_status[request_id]
+        clean_resource(request_id)
 
 
 def parse_request_backend_connect_record(request_id: int, group_id: int, backend_url: str):
