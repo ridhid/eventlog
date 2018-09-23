@@ -90,6 +90,8 @@ def parse_request_record(request_id: int, request_type: str, timestamp: int):
             if send_results_phase_time > merge_phase_time and send_results_phase_time > backend_poll_phase_time:
                 requests_with_too_long_send_results_phase.append(request_id)
 
+
+
         # clean already handled results (memory optimization)
         del requests_start_time[request_id]
         del backend_poll_phase_times[request_id]
@@ -165,12 +167,13 @@ def print_result(file_name: str) -> None:
         for request_id in requests_with_too_long_send_results_phase:
             output.write(f'    {request_id}\n')
 
-        output.write('Обращения и ошибки по бэкандам')
+        output.write('Обращения и ошибки по бэкандам\n')
         for group, backends in replica_groups.items():
+            output.write(f'    ГР {group}\n')
+
             for backend in backends:
                 connections = backends_connections[backend]
 
-                output.write(f'    ГР {group}\n')
                 output.write(f'        {backend}\n')
                 output.write(f'            Обращения: {connections}\n')
 
