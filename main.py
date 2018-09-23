@@ -2,24 +2,36 @@ import functools
 import math
 import re
 from argparse import ArgumentParser
-from typing import List, Mapping
-
-requests_start_time: Mapping[int, int] = {}
-
-backend_poll_phase_times: Mapping[int, int] = {}
-merge_results_phase_time: Mapping[int, int] = {}
-request_send_result_phase: Mapping[int, int] = {}
-
-requests_durations: List[int] = []
-requests_with_too_long_send_results_phase = []
-MAX_REQUEST_WITH_TOO_LONG_SEND_RESULT_PHASE = 10
-
-main_info_re = re.compile(r'(?P<timestamp>\d+)\s*(?P<id>\d+)\s+(?P<type>\w+)\s(?P<arguments>.*)')
+from collections import defaultdict
+from typing import Dict, List
 
 REQUEST_TYPE_START = 'StartRequest'
 REQUEST_TYPE_FINISH = 'FinishRequest'
+REQUEST_TYPE_BACKEND_CONNECT = 'BackendConnect'
+REQUEST_TYPE_BACKEND_ERROR = 'BackendError'
 REQUEST_TYPE_START_MERGE = 'StartMerge'
 REQUEST_TYPE_START_SEND_RESULT = 'StartSendResult'
+
+requests_start_time: Dict[int, int] = {}
+
+backend_poll_phase_times: Dict[int, int] = {}
+merge_results_phase_time: Dict[int, int] = {}
+request_send_result_phase: Dict[int, int] = {}
+
+requests_durations: List[int] = []
+
+request_connections = defaultdict(dict)
+
+backends_replics: Dict[str, int] = {}
+backends_connections = defaultdict(lambda: 0)
+backends_errors = defaultdict(lambda: defaultdict(lambda: 0))
+
+requests_with_too_long_send_results_phase = []
+MAX_REQUEST_WITH_TOO_LONG_SEND_RESULT_PHASE = 10
+
+general_re = re.compile(r'(?P<timestamp>\d+)\s*(?P<id>\d+)\s+(?P<type>\w+)\s.*')
+backend_connect_re = re.compile(f'.*{REQUEST_TYPE_BACKEND_CONNECT}\s(?P<group>\d+)\s+(?P<url>\S+)')
+backend_error_re = re.compile(f'.*{REQUEST_TYPE_BACKEND_ERROR}\s(?P<group>\d+)\s+(?P<error>.*)')
 
 
 def percentile(array, percent, key=lambda x: x):
@@ -50,7 +62,7 @@ def percentile(array, percent, key=lambda x: x):
 percentil_95 = functools.partial(percentile, percent=0.95)
 
 
-def parse_request_record(request_id: int, request_type: str, timestamp: int, arguments: str):
+def parse_request_record(request_id: int, request_type: str, timestamp: int):
     if request_type == REQUEST_TYPE_START:
         requests_start_time[request_id] = timestamp
 
@@ -84,18 +96,53 @@ def parse_request_record(request_id: int, request_type: str, timestamp: int, arg
         del merge_results_phase_time[request_id]
         del request_send_result_phase[request_id]
 
+        del request_connections[request_id]
+
+
+def parse_request_backend_connect_request(request_id: int, group_id: int, backend_url: str):
+    request_connections[request_id][group_id] = backend_url
+    backends_replics[backend_url] = group_id
+    backends_connections[backend_url] += 1
+
+
+def parse_request_backend_error_record(request_id: int, group_id: int, error: str):
+    backend_url = request_connections[request_id][group_id]
+    backends_errors[backend_url][error] += 1
+
 
 def parse_line(line: str):
-    match = main_info_re.match(line)
+    match = general_re.match(line)
     if not match:
+        print(f"Can't parse line: {line}")
         return
 
     request_id: int = int(match.group('id'))
     request_type: str = match.group('type')
     timestamp: int = int(match.group('timestamp'))
-    arguments: str = match.group('arguments')
 
-    parse_request_record(request_id=request_id, request_type=request_type, timestamp=timestamp, arguments=arguments)
+    if request_type == REQUEST_TYPE_BACKEND_CONNECT:
+        match = backend_connect_re.match(line)
+        if not match:
+            print(f"Can't parse backend arguments from line: {line}")
+            return
+
+        group_id = int(match.group('group'))
+        backend_url = match.group('url')
+
+        parse_request_backend_connect_request(request_id=request_id, group_id=group_id, backend_url=backend_url)
+
+    elif request_type == REQUEST_TYPE_BACKEND_ERROR:
+        match = backend_error_re.match(line)
+        if not match:
+            print(f"Can't parse backend arguments from line: {line}")
+            return
+
+        error = match.group('error')
+        group_id = int(match.group('group'))
+
+        parse_request_backend_error_record(request_id=request_id, group_id=group_id, error=error)
+    else:
+        parse_request_record(request_id=request_id, request_type=request_type, timestamp=timestamp)
 
 
 def parse_input(file_name: str) -> None:
@@ -105,13 +152,33 @@ def parse_input(file_name: str) -> None:
 
 
 def print_result(file_name: str) -> None:
-    requests_percentil = int(percentil_95(requests_durations))
+    requests_time_percentil = int(percentil_95(requests_durations))
+
+    replica_groups = defaultdict(list)
+    for backend, group_id in backends_replics.items():
+        replica_groups[group_id].append(backend)
+
     with open(file_name, 'w') as output:
-        output.write(f'95-й перцентиль времени работы: {requests_percentil}\n')
+        output.write(f'95-й перцентиль времени работы: {requests_time_percentil}\n')
         output.write(f'Идентификаторы запросов с самой долгой фазой отправки результатов пользователю:\n')
 
         for request_id in requests_with_too_long_send_results_phase:
             output.write(f'    {request_id}\n')
+
+        output.write('Обращения и ошибки по бэкандам')
+        for group, backends in replica_groups.items():
+            for backend in backends:
+                connections = backends_connections[backend]
+
+                output.write(f'    ГР {group}\n')
+                output.write(f'        {backend}\n')
+                output.write(f'            Обращения: {connections}\n')
+
+                errors = backends_errors[backend]
+                if errors:
+                    output.write(f'            Ошибки\n')
+                for error, count in errors.items():
+                    output.write(f'                {error}: {count}\n')
 
 
 median = functools.partial(percentile, percent=0.5)
