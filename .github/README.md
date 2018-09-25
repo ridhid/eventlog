@@ -1,6 +1,6 @@
 To run script: 
 ```
-python ./main.py -f input.txt -o output.txt
+python ./parser.py -f input.txt -o output.txt
 ```
 
 To run checker
