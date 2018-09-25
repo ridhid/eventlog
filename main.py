@@ -3,7 +3,7 @@ import math
 import re
 from argparse import ArgumentParser
 from collections import defaultdict
-from typing import DefaultDict, Dict, List
+from typing import DefaultDict, Dict, List, Optional
 
 REQUEST_TYPE_START = 'StartRequest'
 REQUEST_TYPE_FINISH = 'FinishRequest'
@@ -53,7 +53,7 @@ class Counter:
 requests_not_completed = Counter()
 
 
-def percentile(array, percent):
+def percentile(array, percent) -> Optional[int]:
     """
     Find the percentile of a list of values.
 
@@ -74,7 +74,7 @@ def percentile(array, percent):
     d0 = array[int(f)] * (c - k)
     d1 = array[int(c)] * (k - f)
 
-    return d0 + d1
+    return int(d0 + d1)
 
 
 percentil_95 = functools.partial(percentile, percent=0.95)
@@ -200,7 +200,7 @@ def parse_input(file_name: str) -> None:
 
 
 def print_result(file_name: str) -> None:
-    requests_time_percentil = int(percentil_95(requests_durations))
+    requests_time_percentil = percentil_95(array=requests_durations)
 
     replica_groups = defaultdict(list)
     for backend, group_id in backends_replicas.items():
