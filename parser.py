@@ -63,8 +63,6 @@ class LineInfo:
         self.timestamp = timestamp
 
     def __eq__(self, other):
-        # print(list((getattr(self, key, None) , getattr(other, key, None)) for key in self.attrs))
-        # import ipdb; ipdb.set_trace()
         return all(getattr(self, key, None) == getattr(other, key, None) for key in self.attrs)
 
     def __repr__(self):
@@ -199,6 +197,7 @@ def handle_info_request_finish(line_info):
         if send_results_duration > merge_duration and send_results_duration > backend_poll_duration:
             requests_with_too_long_send_results_phase.append(line_info.request_id)
 
+    # check not completed request
     if not all(request_connections_response_status[line_info.request_id].values()):
         requests_not_completed.increase()
 
@@ -282,7 +281,6 @@ def parse_line_backend_ok(line: str, request_id: int, request_type: str, timesta
 
 
 def parse_line(line: str) -> LineInfo:
-    # from ipdb import set_trace; set_trace()
     match = general_re.match(line)
     if not match:
         raise ParseException(f"Can't parse line: {line}")
