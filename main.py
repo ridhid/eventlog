@@ -111,11 +111,17 @@ def parse_request_record(request_id: int, request_type: str, timestamp: int):
 
         # compare phase duration
         if len(requests_with_too_long_send_results_phase) < MAX_REQUEST_WITH_TOO_LONG_SEND_RESULT_PHASE:
-            backend_poll_phase_time = backend_poll_phase_times[request_id]
-            merge_phase_time = merge_results_phase_time[request_id]
-            send_results_phase_time = request_send_result_phase[request_id]
 
-            if send_results_phase_time > merge_phase_time and send_results_phase_time > backend_poll_phase_time:
+            start_at = requests_start_time[request_id]
+            backend_poll_end_at = backend_poll_phase_times[request_id]
+            merge_phase_end_at = merge_results_phase_time[request_id]
+            send_results_end_at = request_send_result_phase[request_id]
+
+            backend_poll_duration = backend_poll_end_at - start_at
+            merge_duration = merge_phase_end_at - backend_poll_end_at
+            send_results_duration = send_results_end_at - merge_phase_end_at
+
+            if send_results_duration > merge_duration and send_results_duration > backend_poll_duration:
                 requests_with_too_long_send_results_phase.append(request_id)
 
         if not all(request_connections_response_status[request_id].values()):
