@@ -1,9 +1,10 @@
 import pytest
 
-from parser import (BackendConnectLineInfo, BackendErrorLineInfo, BackendOkLineInfo, LineInfo,
-                    REQUEST_TYPE_BACKEND_CONNECT, REQUEST_TYPE_BACKEND_ERROR, REQUEST_TYPE_BACKEND_OK,
-                    REQUEST_TYPE_FINISH, REQUEST_TYPE_START, REQUEST_TYPE_START_MERGE, REQUEST_TYPE_START_SEND_RESULT,
-                    parse_line)
+from log_parser.const import (
+    REQUEST_TYPE_BACKEND_CONNECT, REQUEST_TYPE_BACKEND_ERROR, REQUEST_TYPE_BACKEND_OK,
+    REQUEST_TYPE_FINISH, REQUEST_TYPE_START, REQUEST_TYPE_START_MERGE, REQUEST_TYPE_START_SEND_RESULT,
+)
+from log_parser.parser import BackendConnectLineInfo, BackendErrorLineInfo, BackendOkLineInfo, LineInfo, parse_line
 
 
 @pytest.mark.parametrize(

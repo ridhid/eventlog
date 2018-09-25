@@ -1,6 +1,11 @@
-To run script: 
+To install tools:
 ```
-python ./parser.py -f input.txt -o output.txt
+pipenv install -e .
+```
+
+To run tools: 
+```
+log-parser -f input.txt -o output.txt
 ```
 
 To install dev dependencies:
