@@ -10,6 +10,9 @@ from log_parser.parser import BackendConnectLineInfo, BackendErrorLineInfo, Back
 MAX_REQUEST_WITH_TOO_LONG_SEND_RESULT_PHASE = 10
 
 
+
+
+
 class RequestStats:
     start_times: Dict[int, int]
 
@@ -33,7 +36,7 @@ class RequestStats:
     def __init__(self):
         self.clean()
 
-    def clean(self):
+    def clean(self, a=1):
         self.start_times = {}
 
         self.poll_ends_at_timestamp = {}
