@@ -45,7 +45,7 @@ class BackendOkLineInfo(LineInfo):
 
     attrs = LineInfo.attrs + ('group_id',)
 
-    def __init__(self, group_id: int, *args, **kwargs):
+    def __init__(self, group_id: int, aaaargs: str, *args, **kwargs):
         self.group_id = group_id
         super().__init__(*args, **kwargs)
 
